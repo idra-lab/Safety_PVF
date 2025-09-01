@@ -1,0 +1,8 @@
+plots/
+__pycache__/
+*.pt
+*.npy
+1d_problem.ipynb
+*.png
+problem_1d.py
+backup.py
