@@ -14,14 +14,21 @@ distr = 'gaussian'
 
 log_repr = False
 
+state_size = 8
+
 def x_next(x,u,d):
+    x=np.array(x)
     return 1.01*x + 0.01 * (u + d)
 
 def pi(x):
-    if x > x_th:
-        return -u_max
-    else:
-        return u_max
+    x=np.array(x)
+    u = np.zeros(x.shape[0])
+    for i in range(x.shape[0]):
+        if x[i] > x_th:
+            u[i] = -u_max
+        else:
+            u[i] = u_max
+    return u
     
 def phi(x):
     if x >= x_th:
@@ -30,20 +37,29 @@ def phi(x):
         return -d_max
 
 def c(x):
-    return np.max((np.min((x+2,10)),-10))
+    c = np.zeros(x.shape[0])
+    for i in range(x.shape[0]):
+        c[i] = np.max((np.min((x[i]+2,10)),-10))
+    return c
 
 def r(x):
-    return np.max((np.min((-(x+1),10)),-10))
+    r = np.zeros(x.shape[0])
+    for i in range(x.shape[0]):
+        r[i] = np.max((np.min((-(x[i]+1),10)),-10))
+    return r
 
 # noise distribution
 def gen_noise():
     if distr == 'uniform':
-        return np.random.uniform(-d_max,d_max)
+        return np.random.uniform(-d_max,d_max,state_size)
     elif distr == 'gaussian':
-        return np.random.normal(0,d_max)
+        return np.random.normal(0,d_max,state_size)
+    
+V_prob = np.load(f"data/V_prob_x_th:{x_th}_u_max:_{u_max}_d_max:_{d_max}_distr_{distr}.npy")
+state_grid = np.load("data/grid.npy")
     
 # settings_class
-class DynSystem():
+class System_conf():
     def __init__(self):
         self.u_max = u_max
         self.d_max = d_max
@@ -53,3 +69,6 @@ class DynSystem():
         self.x_max = x_max
         self.distr = distr
         self.log_repr = log_repr
+        self.state_size = state_size
+        self.V_prob = V_prob
+        self.state_grid = state_grid
