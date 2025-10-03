@@ -59,3 +59,10 @@ print("10^y_hat = x_hat = ", 10**y_hat1)
 print("However it is possible to work in log space and get the right result")
 print("y_hat = log(x_hat) = ", y_hat2)
 print("10^y_hat = x_hat = ", 10**y_hat2)
+
+
+
+# def log_sum(l1, l2,alpha):
+#     l1 += np.log10(1-alpha)
+#     l2 += np.log10(alpha)
+#     return max(l1, l2) + np.log10(1+ 10**(-np.abs(l1-l2)))

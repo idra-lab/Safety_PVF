@@ -5,20 +5,27 @@ d_max = 4
 x_th = -1.5
 gamma=0.99
 
-x_min = -2.1
+x_min = -2.2
 x_max = 2.2
 grid_min = -2.1
 grid_max = 3.0
 
+target_max = -1
+failure_max = -2
+
 distr = 'gaussian'
 
-log_repr = False
+log_repr = True
 
-state_size = 8
+state_size = 20
+
 
 def x_next(x,u,d):
     x=np.array(x)
-    return 1.01*x + 0.01 * (u + d)
+    x_next = 1.01*x + 0.01 * (u + d)
+    reached_states = np.where((failure_max <= x) & (x <= target_max))[0]
+    x_next[reached_states] = x[reached_states]
+    return x_next
 
 def pi(x):
     x=np.array(x)
@@ -39,13 +46,14 @@ def phi(x):
 def c(x):
     c = np.zeros(x.shape[0])
     for i in range(x.shape[0]):
-        c[i] = np.max((np.min((x[i]+2,10)),-10))
+        c[i] = np.max((np.min((x[i]-failure_max,10)),-10))
+    # return np.ones(c.shape[0])
     return c
 
 def r(x):
     r = np.zeros(x.shape[0])
     for i in range(x.shape[0]):
-        r[i] = np.max((np.min((-(x[i]+1),10)),-10))
+        r[i] = np.max((np.min((-(x[i]-target_max),10)),-10))
     return r
 
 # noise distribution

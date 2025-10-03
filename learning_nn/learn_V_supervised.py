@@ -13,15 +13,14 @@ torch.cuda.empty_cache()
 
 if len(sys.argv) < 2:
     print('Use state size specified in the script')
-    state_size = 7
+    state_size = 12
 else:
     state_size = int(sys.argv[1])
     print(f'Use state size {state_size}')
 # load data
 # data = np.load(f"training_data_interrupted_n{state_size}.npy",mmap_mode='r')
-data_V = np.load(f"data/training_data_interrupted__tabular_n{state_size}.npy",mmap_mode='r')
 
-class_type = [RegressionSupervisedTraditionalSpace, RegressionSupervisedLogTarget, RegressionSupervisedLogSpace]
+class_type = [RegressionSupervisedTraditionalSpace, RegressionSupervisedLogTarget, RegressionSupervisedLogSpace, RegressionNN]
 
 if len(sys.argv) < 3:
     print('Use target type specified in the script')
@@ -30,7 +29,12 @@ else:
     target_type = int(sys.argv[2])
     print(f'Use target type {target_type}')
 
-activation_functions= [[nn.ELU(),nn.Sigmoid()],[nn.ELU(),nn.Sigmoid()],[nn.ReLU(),nn.LeakyReLU()]]
+if target_type <= 2:
+    data_V = np.load(f"data/training_data_interrupted__tabular_n{state_size}.npy",mmap_mode='r')
+elif target_type == 3:
+    data = np.load(f"training_data_interrupted_n{state_size}.npy",mmap_mode='r')
+
+activation_functions= [[nn.ELU(),nn.Sigmoid()],[nn.ELU(),nn.Sigmoid()],[nn.ReLU(),nn.LeakyReLU()],[nn.ELU(),nn.Sigmoid()]]
 
 print("Dataset loaded:", data_V.shape)
 
@@ -48,17 +52,18 @@ def clean_data(data):
 dyn_settings = System_conf()
 dyn_settings.state_size = state_size
 
-if not(os.path.exists(f'data/data_supervised_state_size{state_size}.npy')):
-    data_clean_chunk = []
-    # generate data in pairs
-    step = int(data_V.shape[0]/1000)
-    for jj in tqdm(range(0,data_V.shape[0],step)):
-        data_chunk = data_V[jj:jj+step]
-        data_clean_chunk.append(clean_data(data_chunk))
-    data_clean = np.vstack(data_clean_chunk)
+if target_type <= 2:
+    if not(os.path.exists(f'data/data_supervised_state_size{state_size}.npy')):
+        data_clean_chunk = []
+        # generate data in pairs
+        step = int(data_V.shape[0]/1000)
+        for jj in tqdm(range(0,data_V.shape[0],step)):
+            data_chunk = data_V[jj:jj+step]
+            data_clean_chunk.append(clean_data(data_chunk))
+        data_clean = np.vstack(data_clean_chunk)
 
-    np.save(f'data/data_supervised_state_size{state_size}.npy',data_clean)
-else: data_clean = np.load(f'data/data_supervised_state_size{state_size}.npy')
+        np.save(f'data/data_supervised_state_size{state_size}.npy',data_clean)
+    else: data_clean = np.load(f'data/data_supervised_state_size{state_size}.npy')
 
 print(f'Data clean size: {data_clean.shape}')
 
@@ -81,7 +86,7 @@ x_train = torch.Tensor(x_train).to(device)
 class LogLoss(nn.Module):
     def __init__(self):
         super(LogLoss, self).__init__()
-        self.alpha = 0.05
+        self.alpha = 0.02
         self.log_alpha = np.log10(self.alpha)
         self.log_1_m_alpha = np.log10(1-self.alpha)
 
@@ -90,8 +95,8 @@ class LogLoss(nn.Module):
         return (torch.max(l1, l2) + torch.log10(1+ torch.pow(10,-torch.abs(l1-l2)))).detach()
 
     def forward(self, x, x_target):
-        l1 = x + self.log_alpha
-        l2 = x_target + self.log_1_m_alpha
+        l1 = x + self.log_1_m_alpha
+        l2 = x_target + self.log_alpha
 
         loss = torch.mean((x - self.log_sum(l1,l2)) ** 2)  # Mean Squared Error
         return loss
@@ -114,7 +119,7 @@ optimizer = torch.optim.Adam(
     #weight_decay=2e-5,
     amsgrad=True,
 )
-batch_size = 512
+batch_size = 1024
 regressor = class_type[target_type](batch_size, nn_V_safe,nn_target, loss_fn, optimizer, dyn_settings)
 
 # training
